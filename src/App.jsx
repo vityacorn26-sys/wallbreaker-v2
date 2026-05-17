@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useTelegram } from './hooks/useTelegram';
 
+const API = import.meta.env.VITE_API_URL || 'http://75.119.147.2:3001';
+
 function App() {
   const { tg, initData } = useTelegram();
   const [score, setScore] = useState(0);
@@ -8,7 +10,7 @@ function App() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch('/api/user', {
+    fetch(API + '/api/user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ initData }),
@@ -26,7 +28,7 @@ function App() {
   }, [initData]);
 
   const handleTap = useCallback(() => {
-    fetch('/api/tap', {
+    fetch(API + '/api/tap', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ initData, count: 1 }),
