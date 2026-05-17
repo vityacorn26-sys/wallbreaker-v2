@@ -5,6 +5,7 @@ function App() {
   const { tg, initData } = useTelegram();
   const [score, setScore] = useState(0);
   const [user, setUser] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!initData) return;
@@ -14,11 +15,16 @@ function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ initData }),
     })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then(data => {
+        if (data.error) throw new Error(data.error);
         setUser(data);
         setScore(data.live_score);
-      });
+      })
+      .catch(e => setError(e.message));
   }, [initData]);
 
   const handleTap = useCallback(() => {
@@ -28,10 +34,15 @@ function App() {
       body: JSON.stringify({ initData, count: 1 }),
     })
       .then(res => res.json())
-      .then(data => setScore(data.live_score));
+      .then(data => {
+        if (data.error) throw new Error(data.error);
+        setScore(data.live_score);
+      })
+      .catch(e => setError(e.message));
   }, [initData]);
 
-  if (!user) return <div className="flex items-center justify-center h-full bg-black text-green-400 font-mono">Loading...</div>;
+  if (error) return <div style={{color:'red', background:'#0a0a0a', height:'100vh', padding:20}}>Ошибка: {error}</div>;
+  if (!user) return <div style={{color:'lime', background:'#0a0a0a', height:'100vh', display:'flex', alignItems:'center', justifyContent:'center'}}>Loading...</div>;
 
   return (
     <div className="w-full h-full flex flex-col justify-center items-center bg-black text-green-400 font-mono">
