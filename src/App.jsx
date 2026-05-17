@@ -8,8 +8,6 @@ function App() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!initData) return;
-
     fetch('/api/user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -22,7 +20,7 @@ function App() {
       .then(data => {
         if (data.error) throw new Error(data.error);
         setUser(data);
-        setScore(data.live_score);
+        setScore(data.live_score ?? 0);
       })
       .catch(e => setError(e.message));
   }, [initData]);

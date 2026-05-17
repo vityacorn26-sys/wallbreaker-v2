@@ -5,24 +5,27 @@ export const useTelegram = () => {
   const [tg, setTg] = useState(null);
 
   useEffect(() => {
-    const tg = window.Telegram?.WebApp;
-    if (!tg) return;
+    if (window.Telegram && window.Telegram.WebApp) {
+      const tgWebApp = window.Telegram.WebApp;
+      tgWebApp.ready();
+      tgWebApp.expand();
 
-    tg.ready();
-    tg.expand();
-
-    if (tg.initData) {
-      setInitData(tg.initData);
-      setTg(tg);
+      if (tgWebApp.initData) {
+        setInitData(tgWebApp.initData);
+        setTg(tgWebApp);
+      } else {
+        const checkInitData = setInterval(() => {
+          if (tgWebApp.initData) {
+            clearInterval(checkInitData);
+            setInitData(tgWebApp.initData);
+            setTg(tgWebApp);
+          }
+        }, 100);
+        return () => clearInterval(checkInitData);
+      }
     } else {
-      const checkInitData = setInterval(() => {
-        if (tg.initData) {
-          clearInterval(checkInitData);
-          setInitData(tg.initData);
-          setTg(tg);
-        }
-      }, 100);
-      return () => clearInterval(checkInitData);
+      setInitData('');
+      setTg(null);
     }
   }, []);
 
