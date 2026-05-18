@@ -9,16 +9,14 @@ import { recalcDrawScore, getActiveDrawId } from './server/services/draw';
 
 initDb();
 const app = express.default();
-const PORT = parseInt(process.env.PORT || '3000');
+const PORT = 3001;
 
 app.use(cors.default({
   origin: [
-    'http://localhost:5173',
-    'http://75.119.147.2:5173',
     'https://vityacorn26-sys.github.io',
-    'https://vityacorn26-sys.github.io/wallbreaker-v2'
+    'https://wb-v2-api.corterbs.dpdns.org'
   ],
-  credentials: true
+  credentials: false
 }));
 app.use(express.json());
 
@@ -36,7 +34,6 @@ function regenEnergy(user: any) {
 
 app.post('/api/user', (req, res) => {
   try {
-    const initData = req.body?.initData || '';
     const telegramId = '7614360974';
     let user = db.prepare('SELECT * FROM users WHERE telegramId = ?').get(telegramId) as any;
     if (!user) {
@@ -90,12 +87,6 @@ app.post('/api/tap', (req, res) => {
     console.error(e);
     res.status(500).json({ error: 'tap failed' });
   }
-});
-
-const distPath = path.join(process.cwd(), 'dist');
-app.use(express.static(distPath));
-app.use((req, res) => {
-  res.sendFile(path.join(distPath, 'index.html'));
 });
 
 app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Server running on port ${PORT}`));
