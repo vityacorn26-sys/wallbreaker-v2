@@ -1,6 +1,7 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 import * as express from 'express';
+import * as path from 'path';
 import * as cors from 'cors';
 import db, { initDb } from './server/db';
 import { getRewardForRank } from './server/services/ranks';
@@ -93,7 +94,7 @@ app.post('/api/tap', (req, res) => {
 
 const distPath = path.join(process.cwd(), 'dist');
 app.use(express.static(distPath));
-app.get('*', (req, res) => {
+app.use((req, res) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
 
