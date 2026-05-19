@@ -1,9 +1,36 @@
 @import "tailwindcss";
 
+@theme {
+  /* Заменяем системный белый на живой, блестящий хромированный металлик */
+  --color-metallic: #e2e8f0;
+  
+  /* Фирменные цвета проекта для Breach Board и интерфейса */
+  --color-cyber-cyan: #06b6d4;      /* Бирюзовый для активных/eligible */
+  --color-cyber-red: #7f1d1d;       /* Глубокий хакерский красный для не внёсших ключ */
+  --color-neon-pink: #f472b6;       /* Лёгкий розовый для подсветки тучки */
+  
+  /* Кастомная плавная анимация "дыхания" (пульсации) для кота, тучки и сервера */
+  --animate-pulse-live: pulse-live 3.5s ease-in-out infinite;
+
+  @keyframes pulse-live {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.03);
+    }
+  }
+}
+
+/* Базовые стили экрана игры под Fullscreen */
 html, body, #root {
   width: 100%;
   height: 100%;
   margin: 0;
   padding: 0;
-  background: #0a0a0a;
+  background: #020617; /* Глубокий хакерский темный фон вместо серого */
+  color: var(--color-metallic);
+  font-family: 'Courier New', Courier, monospace;
+  overflow: hidden; /* Запрещаем случайные прокрутки в Fullscreen */
+  user-select: none; /* Чтобы при частых тапах по коту не выделялся текст */
 }
