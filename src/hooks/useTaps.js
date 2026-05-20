@@ -1,5 +1,7 @@
 import { useCallback, useRef } from 'react';
 
+const API = 'https://wb-v2-api.corterbs.dpdns.org';
+
 export default function useTaps(initData) {
   const tapBuffer = useRef(0);
   const syncTimer = useRef(null);
@@ -10,16 +12,16 @@ export default function useTaps(initData) {
     tapBuffer.current = 0;
 
     try {
-      const res = await fetch('/api/tap', {
+      const res = await fetch(`${API}/api/tap`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ initData, count }),
       });
       const data = await res.json();
-      console.log('Taps sent:', data);
+      console.log('Taps synced successfully:', data);
       return data;
     } catch (e) {
-      console.error('Batch tap failed:', e);
+      console.error('Batch tap sync failed:', e);
       return null;
     }
   }, [initData]);
