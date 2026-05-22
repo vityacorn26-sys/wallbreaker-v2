@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './index.css';
 
-// Импортируем продовые ассеты
-import cat1 from './assets/cat1-PIsrTzOT.jpg';
-import cat2 from './assets/cat2-D6Et6OfU.jpg';
-import cat3 from './assets/cat3-BMcFTwCD.jpg';
-import cat4 from './assets/cat4-C4-mAWUO.jpg';
-import cat5 from './assets/cat5-BBIkAUHa.jpg';
+// Чистые оригинальные импорты без хэш-хвостов сборщика
+import cat1 from './assets/cat1.jpg';
+import cat2 from './assets/cat2.jpg';
+import cat3 from './assets/cat3.jpg';
+import cat4 from './assets/cat4.jpg';
+import cat5 from './assets/cat5.jpg';
 import loadingImg from './assets/loading.jpg'; 
 import serverImg from './assets/server.jpg';   
 
 const API = 'https://wb-v2-api.corterbs.dpdns.org';
-const PROXY_BOT_URL = 'https://t.me/hiddifyProxySale_bot'; // Твой бот продаж подписок прокси
+const PROXY_BOT_URL = 'https://t.me/hiddifyProxySale_bot'; // Железная ссылка на бота продаж
 
 const RANK_IMAGES = {
   1: cat1,
@@ -28,19 +28,10 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [tgInitData, setTgInitData] = useState('');
-  
-  // Состояния для анимации клика
   const [isTapping, setIsTapping] = useState(false);
 
-  // Рефы для батчинга тапов (Пакетная система)
   const clicksBufferRef = useRef(0);
   const debounceTimeoutRef = useRef(null);
-  const userStateRef = useRef(null);
-
-  // Синхронизируем реф состояния пользователя для батчинга
-  useEffect(() => {
-    userStateRef.current = user;
-  }, [user]);
 
   useEffect(() => {
     if (window.Telegram?.WebApp) {
@@ -69,12 +60,10 @@ export default function App() {
     }
   }, []);
 
-  // Функция отправки накопленных тапов пакетом на сервер
   const sendPackToServer = () => {
     const totalTaps = clicksBufferRef.current;
     if (totalTaps <= 0) return;
 
-    // Сбрасываем буфер перед запросом
     clicksBufferRef.current = 0;
 
     fetch(`${API}/api/tap`, {
@@ -84,14 +73,9 @@ export default function App() {
     })
       .then(res => res.json())
       .then(data => {
-        if (!data.error) {
-          // Мягко синхронизируем баланс и энергию с ответом сервера
-          setUser(data);
-        }
+        if (!data.error) setUser(data);
       })
-      .catch(err => {
-        console.error("Batch send error:", err);
-      });
+      .catch(err => console.error("Batch send error:", err));
   };
 
   const handleTap = () => {
@@ -100,26 +84,21 @@ export default function App() {
     const currentRankId = user.rank_id || 1;
     const rewardPerTap = RANK_REWARDS[currentRankId] || 10;
 
-    // Визуальный триггер перелива и усадки кнопки
     setIsTapping(true);
     setTimeout(() => setIsTapping(false), 85);
 
-    // 1. Мгновенное обновление UI (Оптимистичный апдейт)
     setUser(prev => ({
       ...prev,
       wbc_balance: prev.wbc_balance + rewardPerTap,
       energy: Math.max(0, prev.energy - 1)
     }));
 
-    // 2. Копим тап в буфер для батчинга
     clicksBufferRef.current += 1;
 
-    // 3. Сбрасываем и взводим таймаут дебаунса (850мс, как в старом проде)
     if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
     debounceTimeoutRef.current = setTimeout(sendPackToServer, 850);
   };
 
-  // ЭКРАН ЗАГРУЗКИ (Строго loading.jpg на весь экран)
   if (loading) {
     return (
       <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center text-white z-50">
@@ -141,7 +120,7 @@ export default function App() {
   return (
     <div className="relative min-h-screen bg-slate-950 text-white font-mono select-none overflow-hidden flex flex-col justify-between p-4">
       
-      {/* ДЫШАЩИЙ ФОН КОТА (Без размытия, плавно пульсирует масштаб и прозрачность) */}
+      {/* ДЫШАЩИЙ ФОН КОТА (Без размытия, пульсирует масштаб и прозрачность) */}
       <div className="absolute inset-0 opacity-[0.12] pointer-events-none animate-[pulse_6s_ease-in-out_infinite] scale-102">
         <img src={currentRankImage} alt="Background Node" className="w-full h-full object-cover" />
       </div>
@@ -171,7 +150,7 @@ export default function App() {
           </h1>
         </div>
 
-        {/* КНОПКА-КОТ (Усадка при тапе + неоновое переливающееся свечение границ) */}
+        {/* КНОПКА-КОТ (Усадка при тапе + неоновое переливающееся свечение) */}
         <button 
           onClick={handleTap}
           style={{ transform: isTapping ? 'scale(0.985)' : 'scale(1)' }}
@@ -181,7 +160,6 @@ export default function App() {
               : 'border-cyan-400 shadow-[0_0_30px_rgba(34,211,238,0.25)]'
             }`}
         >
-          {/* Слой переливающегося неонового оттенка поверх кота при тапе */}
           <div className={`absolute inset-0 bg-gradient-to-tr from-cyan-500/10 via-indigo-500/10 to-purple-500/20 pointer-events-none transition-opacity duration-100 ${isTapping ? 'opacity-100' : 'opacity-0'}`}></div>
           <img src={currentRankImage} alt="Core Matrix" className="w-full h-full object-cover" />
         </button>
@@ -203,7 +181,6 @@ export default function App() {
 
       {/* НИЖНИЙ ТАБ-БАР */}
       <div className="relative z-10 grid grid-cols-5 gap-1 bg-slate-900/95 border border-slate-800/80 p-2 rounded-2xl backdrop-blur-lg w-full max-w-md mx-auto">
-        {/* ИКОНКА SERVER.JPG (Прямой переход на бота подписок) */}
         <a 
           href={PROXY_BOT_URL} 
           target="_blank" 
@@ -230,7 +207,7 @@ export default function App() {
         </button>
       </div>
 
-      {/* БОКОВОЕ ГАМБУРГЕР-МЕНЮ (КАНОНИЧНЫЕ КНОПКИ) */}
+      {/* БОКОВОЕ МЕНЮ */}
       <div className={`fixed inset-y-0 left-0 w-72 bg-slate-950/98 border-r border-slate-900 z-50 transform ${menuOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-out p-6 flex flex-col justify-between backdrop-blur-md`}>
         <div className="flex flex-col gap-6">
           <div className="flex justify-between items-center border-b border-slate-900 pb-4">
