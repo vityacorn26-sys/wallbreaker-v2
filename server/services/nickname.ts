@@ -1,5 +1,5 @@
 import * as crypto from 'crypto';
-import db from '../db';
+import db from '../db.js';
 
 export const NICK_FIRST_PARTS = `
 Alex Adrian Aiden Arin Axel Blaze Cairo Dante Devin Elias Felix Gage Hugo Ivar Jax Kai Leon Luca Milan Nico Orion Pax Quentin Rafael Roman Theo Viktor Zane

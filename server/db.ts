@@ -1,5 +1,9 @@
 import Database from 'better-sqlite3';
-const db = new Database('server/database.db');
+import * as path from 'path';
+
+// Задаем абсолютный путь к базе данных в корне нового стека v2
+const dbPath = path.resolve('/opt/wallbreaker-v2/server/database.db');
+const db = new Database(dbPath);
 
 export function initDb() {
   db.exec(`
@@ -77,5 +81,4 @@ export function initDb() {
     db.prepare("INSERT INTO draw_rounds (status, createdAt) VALUES ('active', ?)").run(Date.now());
   }
 }
-
 export default db;

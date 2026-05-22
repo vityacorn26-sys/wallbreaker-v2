@@ -1,8 +1,16 @@
+import cat1 from "./assets/cat1.jpg";
+import cat2 from "./assets/cat2.jpg";
+import cat3 from "./assets/cat3.jpg";
+import cat4 from "./assets/cat4.jpg";
+import cat5 from "./assets/cat5.jpg";
 import { useEffect, useState } from 'react';
 import { useTelegram } from './hooks/useTelegram';
 import useTaps from './hooks/useTaps';
 
 const API = 'https://wb-v2-api.corterbs.dpdns.org';
+
+const catImages = { 1: cat1, 2: cat2, 3: cat3, 4: cat4, 5: cat5 };
+const rankNames = { 1: "PROXY HACKER", 2: "Tunnel Master", 3: "Firewall Breaker", 4: "Root Operator", 5: "Cyber Legend" };
 
 function App() {
   const { tg, initData } = useTelegram();
@@ -97,12 +105,7 @@ function App() {
           onTouchStart={(e) => { e.preventDefault(); onTapClick(); }}
           className="w-72 h-72 rounded-3xl border-2 border-cyan-400 overflow-hidden bg-black/20 shadow-[0_0_30px_rgba(34,211,238,0.2)] active:scale-95 transition-transform duration-75 cursor-pointer"
         >
-          <img
-            src="/assets/hero.png"
-            alt="Cyber Cat"
-            className="w-full h-full object-cover pointer-events-none"
-            onError={(e) => { e.target.src = 'https://placekitten.com/300/300' }}
-          />
+          <img src={catImages[user.rank_id] || cat1} alt="Cyber Cat" className="w-full h-full object-cover pointer-events-none" />
         </div>
 
         {/* ШКАЛА CPU: Строго без русского перевода */}
@@ -126,21 +129,16 @@ function App() {
           rel="noreferrer"
           className="w-14 h-14 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex items-center justify-center active:scale-90 transition-transform shadow-[0_0_15px_rgba(6,182,212,0.1)]"
         >
-          <img 
-            src="/assets/server.jpg" 
-            alt="VPN" 
-            className="w-full h-full object-cover" 
-            onError={(e) => { e.target.src = 'https://placekitten.com/50/50' }} 
-          />
+          <img src={catImages[user.rank_id] || cat1} alt="Cyber Cat" className="w-full h-full object-cover pointer-events-none" />
         </a>
 
         {/* ТАБ-БАР: Кнопки увеличены по высоте (py-3.5) для удобства тапа */}
         <div className="flex-1 flex bg-slate-900/90 border border-slate-800 rounded-xl p-1 justify-between text-[11px] font-bold font-mono shadow-lg">
-          <button className="flex-1 py-3.5 rounded-lg bg-cyan-400 text-slate-950 font-extrabold text-center">HOME</button>
+          <button className="flex-1 py-4 rounded-lg bg-cyan-400 text-slate-950 font-extrabold text-center">ГЛАВНАЯ</button>
           <button className="flex-1 py-3.5 text-slate-400 text-center active:text-cyan-400">TASKS</button>
-          <button className="flex-1 py-3.5 text-slate-400 text-center active:text-cyan-400">MARKET</button>
-          <button className="flex-1 py-3.5 text-slate-400 text-center active:text-cyan-400">CONTRACT</button>
-          <button className="flex-1 py-3.5 text-slate-400 text-center active:text-cyan-400">ACCOUNT</button>
+          <button className="flex-1 py-4 text-slate-400 text-center active:text-cyan-400">DarkNet Market</button>
+          <button className="flex-1 py-4 text-slate-400 text-center active:text-cyan-400">КОНТРАКТ</button>
+          <button className="flex-1 py-4 text-slate-400 text-center active:text-cyan-400">АККАУНТ</button>
         </div>
       </div>
 

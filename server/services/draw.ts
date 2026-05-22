@@ -1,4 +1,4 @@
-import db from '../db';
+import db from '../db.js';
 
 export function getActiveDrawId(): number {
   const row = db.prepare("SELECT id FROM draw_rounds WHERE status = 'active' ORDER BY id DESC LIMIT 1").get() as any;
