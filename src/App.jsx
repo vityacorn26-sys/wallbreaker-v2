@@ -12,280 +12,88 @@ import serverImg from './assets/server.jpg';
 const API = 'https://wb-v2-api.corterbs.dpdns.org';
 const PROXY_BOT_URL = 'https://t.me/hiddifyProxySale_bot';
 
-const RANK_IMAGES = {
-  1: cat1,
-  2: cat2,
-  3: cat3,
-  4: cat4,
-  5: cat5
-};
-
+const RANK_IMAGES = { 1: cat1, 2: cat2, 3: cat3, 4: cat4, 5: cat5 };
 const RANK_REWARDS = { 1: 10, 2: 25, 3: 60, 4: 150, 5: 400 };
 
 export default function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState({ wbc_balance: 0, energy: 100, rank_id: 1, rank_name: "Proxy Hacker" });
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [tgInitData, setTgInitData] = useState('');
   const [isTapping, setIsTapping] = useState(false);
-
   const clicksBufferRef = useRef(0);
-  const debounceTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (window.Telegram?.WebApp) {
-      const tg = window.Telegram.WebApp;
-      tg.ready();
-      tg.expand();
-      const initDataStr = tg.initData || '';
-      setTgInitData(initDataStr);
-
+      window.Telegram.WebApp.ready();
+      window.Telegram.WebApp.expand();
+      
       fetch(`${API}/api/user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData: initDataStr })
+        body: JSON.stringify({ initData: window.Telegram.WebApp.initData })
       })
-        .then(res => res.json())
-        .then(data => {
-          if (!data.error) setUser(data);
-          setLoading(false);
-        })
-        .catch(err => {
-          console.error("API Init Error:", err);
-          setLoading(false);
-        });
+      .then(res => res.json())
+      .then(data => { if (!data.error) setUser(data); setLoading(false); })
+      .catch(() => setLoading(false));
     } else {
       setLoading(false);
     }
   }, []);
 
-  const sendPackToServer = () => {
-    const totalTaps = clicksBufferRef.current;
-    if (totalTaps <= 0) return;
-
-    clicksBufferRef.current = 0;
-
-    fetch(`${API}/api/tap`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData: tgInitData, count: totalTaps })
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (!data.error) {
-          setUser(data);
-        }
-      })
-      .catch(err => {
-        console.error("Batch send error:", err);
-      });
-  };
-
   const handleTap = () => {
-    if (!user || user.energy <= 0) return;
-
-    const currentRankId = user.rank_id || 1;
-    const rewardPerTap = RANK_REWARDS[currentRankId] || 10;
-
+    if (user.energy <= 0) return;
     setIsTapping(true);
     setTimeout(() => setIsTapping(false), 80);
-
-    setUser(prev => ({
-      ...prev,
-      wbc_balance: prev.wbc_balance + rewardPerTap,
-      energy: Math.max(0, prev.energy - 1)
-    }));
-
+    setUser(prev => ({ ...prev, wbc_balance: prev.wbc_balance + RANK_REWARDS[prev.rank_id], energy: Math.max(0, prev.energy - 1) }));
     clicksBufferRef.current += 1;
-
-    if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
-    debounceTimeoutRef.current = setTimeout(sendPackToServer, 850);
+    fetch(`${API}/api/tap`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ initData: window.Telegram?.WebApp?.initData, count: 1 }) });
   };
 
-  const handleProxyClick = (e) => {
-    e.preventDefault();
-    if (window.Telegram?.WebApp) {
-      window.Telegram.WebApp.openTelegramLink(PROXY_BOT_URL);
-      setTimeout(() => {
-        window.Telegram.WebApp.close();
-      }, 100);
-    } else {
-      window.open(PROXY_BOT_URL, '_blank');
-    }
+  const handleProxyClick = () => {
+    window.Telegram?.WebApp?.openTelegramLink(PROXY_BOT_URL);
   };
 
-  if (loading) {
-    return (
-      <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center text-white z-50">
-        <div className="w-full h-full absolute inset-0">
-          <img src={loadingImg} alt="Booting OS..." className="w-full h-full object-cover" />
-        </div>
-        <div className="relative z-10 bg-slate-950/80 backdrop-blur-md px-6 py-4 rounded-2xl border border-cyan-500/30 flex flex-col items-center gap-1 mt-auto mb-16">
-          <p className="text-cyan-400 font-mono text-xs tracking-[0.3em] uppercase animate-pulse">BOOTING SYSTEM OS...</p>
-          <span className="text-[9px] text-slate-500 font-mono">WALLBREAKER PROTOCOL V2</span>
-        </div>
-      </div>
-    );
-  }
-
-  const currentRankId = user?.rank_id || 1;
-  const currentRankImage = RANK_IMAGES[currentRankId] || cat1;
-  const currentRankName = user?.rank_name || "Proxy Hacker";
+  if (loading) return <div className="fixed inset-0 bg-slate-950 flex items-center justify-center text-cyan-400">LOADING...</div>;
 
   return (
-    <div className="relative min-h-screen bg-slate-950 text-white font-mono select-none overflow-hidden flex flex-col justify-between p-4 pb-20">
+    <div className="relative min-h-screen bg-slate-950 text-white font-mono flex flex-col justify-between p-4 pb-24">
+      <img src={RANK_IMAGES[user.rank_id]} className="absolute inset-0 w-full h-full object-cover" alt="bg" />
       
-      <div className="absolute inset-0 opacity-25 pointer-events-none animate-[breatheBg_8s_ease-in-out_infinite]">
-        <img src={currentRankImage} alt="Background Node" className="w-full h-full object-cover" />
+      <div className="relative z-10 pt-12 flex justify-between items-center">
+        <button onClick={() => setMenuOpen(true)} className="p-3 bg-slate-800/50 rounded-lg">☰</button>
+        <div className="bg-slate-900/50 px-4 py-1 rounded-full text-cyan-400 text-xs uppercase border border-cyan-500/30">R{user.rank_id} Node Active</div>
       </div>
 
-      <div className="relative z-10 w-full flex justify-between items-center pt-16">
-        <button 
-          onClick={() => setMenuOpen(true)}
-          className="w-11 h-11 rounded-xl bg-slate-900/90 border border-slate-800 flex flex-col justify-center items-center gap-1.5 active:scale-95 transition-transform"
-        >
-          <div className="w-5 h-0.5 bg-cyan-400"></div>
-          <div className="w-5 h-0.5 bg-cyan-400"></div>
-          <div className="w-5 h-0.5 bg-cyan-400"></div>
-        </button>
-
-        <div className="bg-slate-900/80 border border-cyan-500/20 px-3 py-1 rounded-lg text-[9px] text-cyan-400 font-black tracking-widest uppercase">
-          R{currentRankId} NODE ACTIVE
+      <div className="relative z-10 flex flex-col items-center justify-center flex-grow">
+        <div className="bg-slate-900/60 backdrop-blur-sm p-4 rounded-2xl border border-white/10 mb-6">
+          <h2 className="text-2xl font-black text-cyan-400 tracking-widest">{user.rank_name}</h2>
         </div>
-      </div>
-
-      <div className="relative z-10 flex flex-col items-center justify-center my-auto gap-4 w-full -mt-2">
-        
-        <div className="text-center">
-          <h2 className="text-xl font-black tracking-widest text-cyan-400 uppercase drop-shadow-[0_2px_10px_rgba(34,211,238,0.4)]">
-            {currentRankName}
-          </h2>
-        </div>
-
-        <div className="text-center mb-1">
-          <h1 className="text-4xl font-black tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
-            {user?.wbc_balance?.toLocaleString() || 0} <span className="text-cyan-400 text-2xl font-black">$WBC</span>
-          </h1>
-        </div>
-
-        <button 
-          onClick={handleTap}
-          style={{ transform: isTapping ? 'scale(0.975)' : 'scale(1)' }}
-          className={`relative w-64 h-64 rounded-[2.5rem] overflow-hidden border-4 transition-all duration-75 outline-none
-            animate-[breatheBtn_4s_ease-in-out_infinite]
-            ${isTapping 
-              ? 'border-indigo-500 shadow-[0_0_50px_rgba(99,102,241,0.6)]' 
-              : 'border-cyan-400 shadow-[0_0_35px_rgba(34,211,238,0.35)]'
-            }`}
-        >
-          <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/20 via-indigo-500/20 to-purple-500/30 animate-[pulse_3s_infinite] pointer-events-none"></div>
-          <img src={currentRankImage} alt="Core Matrix" className="w-full h-full object-cover" />
-        </button>
-
-        <div className="w-full max-w-xs flex flex-col gap-1.5 mt-2">
-          <div className="flex justify-between text-[10px] tracking-wider text-slate-400 px-1">
-            <span>CORE CPU LOAD</span>
-            <span className="text-cyan-400 font-black">{user?.energy || 0}%</span>
-          </div>
-          <div className="w-full h-2 bg-slate-900 rounded-full border border-slate-800/60 overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600 transition-all duration-300"
-              style={{ width: `${user?.energy || 0}%` }}
-            ></div>
-          </div>
-        </div>
-      </div>
-
-      <div className="fixed bottom-6 left-6 z-20">
-        <button 
-          onClick={handleProxyClick}
-          className="flex flex-col items-center justify-center p-1.5 bg-slate-900/95 border border-slate-800 rounded-xl active:scale-90 transition-transform shadow-[0_0_20px_rgba(6,182,212,0.2)]"
-        >
-          <div className="w-9 h-9 rounded-lg overflow-hidden border border-slate-700/60 flex items-center justify-center">
-            <img src={serverImg} alt="Proxy Sales Bot" className="w-full h-full object-cover" />
-          </div>
-          <span className="text-[8px] mt-1 font-bold text-cyan-400 tracking-wider">SRV bot</span>
+        <h1 className="text-5xl font-black mb-8">{user.wbc_balance.toLocaleString()} $WBC</h1>
+        <button onClick={handleTap} className={`w-64 h-64 rounded-full transition-transform ${isTapping ? 'scale-95' : 'scale-100'}`}>
+          <img src={RANK_IMAGES[user.rank_id]} className="w-full h-full rounded-full border-4 border-cyan-400 shadow-2xl" />
         </button>
       </div>
 
-      <div className="relative z-10 bg-slate-900/95 border border-slate-800/80 p-2 rounded-2xl backdrop-blur-lg w-full max-w-xs mx-auto mb-2">
-        <div className="grid grid-cols-4 gap-1">
-          <button className="flex flex-col items-center justify-center p-1.5 rounded-xl text-cyan-400 font-black bg-slate-800/40 border border-cyan-500/10">
-            <span className="text-[10px]">ГЛАВНАЯ</span>
-          </button>
-          <button className="flex flex-col items-center justify-center p-1.5 rounded-xl text-slate-400">
-            <span className="text-[10px]">TASKS</span>
-          </button>
-          <button className="flex flex-col items-center justify-center p-1.5 rounded-xl text-slate-400 text-center leading-tight">
-            <span className="text-[9px] block">DARKNET</span>
-            <span className="text-[8px] block opacity-80">MARKET</span>
-          </button>
-          <button className="flex flex-col items-center justify-center p-1.5 rounded-xl text-slate-400">
-            <span className="text-[10px]">АККАУНТ</span>
-          </button>
-        </div>
-      </div>
+      <button onClick={handleProxyClick} className="fixed bottom-32 left-6 z-20 w-16 h-16 rounded-2xl overflow-hidden border-2 border-cyan-400">
+        <img src={serverImg} className="w-full h-full object-cover" />
+      </button>
 
-      <div className={`fixed inset-y-0 left-0 w-72 bg-slate-950/98 border-r border-slate-900 z-50 transform ${menuOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-out p-6 flex flex-col justify-between backdrop-blur-md`}>
-        <div className="flex flex-col gap-6">
-          <div className="flex justify-between items-center border-b border-slate-900 pb-4 pt-16">
-            <h2 className="text-cyan-400 font-black tracking-widest text-xs uppercase">⚡ PROTOCOL CORE</h2>
-            <button onClick={() => setMenuOpen(false)} className="text-slate-500 hover:text-white transition-colors text-lg">✕</button>
-          </div>
-
-          <nav className="flex flex-col gap-2.5">
-            <button className="w-full text-left p-3 rounded-xl bg-gradient-to-r from-cyan-950/30 to-slate-900 border border-cyan-500/20 hover:border-cyan-400 transition-all group active:scale-[0.98]">
-              <div className="text-xs font-black text-white group-hover:text-cyan-400 transition-colors">Code Injection</div>
-              <div className="text-[10px] text-cyan-500/80 font-mono mt-0.5">+1,500 WBC & Full CPU</div>
-            </button>
-
-            <button className="w-full text-left p-3 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-all active:scale-[0.98]">
-              <div className="text-xs font-bold text-slate-300">Referral Node</div>
-              <div className="text-[10px] text-slate-500 font-mono mt-0.5">Grid network mapping</div>
-            </button>
-
-            <button className="w-full text-left p-3 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-all active:scale-[0.98]">
-              <div className="text-xs font-bold text-slate-300">Breach Board</div>
-              <div className="text-[10px] text-slate-500 font-mono mt-0.5">Global cyber leaderboard</div>
-            </button>
-
-            <button className="w-full text-left p-3 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-all active:scale-[0.98]">
-              <div className="text-xs font-bold text-slate-300">Promocode</div>
-              <div className="text-[10px] text-slate-500 font-mono mt-0.5">Decrypt operational vouchers</div>
-            </button>
-          </nav>
-        </div>
-
-        <div className="text-[10px] text-slate-700 text-center border-t border-slate-900 pt-4 font-mono uppercase tracking-widest">
-          WallBreaker OS v2.0.0
-        </div>
+      <div className="fixed bottom-4 left-4 right-4 z-20 bg-slate-300 p-2 rounded-2xl flex justify-around border border-slate-400">
+        {['ГЛАВНАЯ', 'TASKS', 'MARKET', 'АККАУНТ'].map(label => (
+          <button key={label} className="text-cyan-400 font-bold text-xs py-2">{label}</button>
+        ))}
       </div>
 
       {menuOpen && (
-        <div onClick={() => setMenuOpen(false)} className="fixed inset-0 bg-black/60 z-40 transition-opacity"></div>
+        <div className="fixed inset-0 z-50 bg-slate-300 w-3/4 p-6 shadow-2xl border-r border-slate-400">
+          <div className="flex justify-between mb-8">
+            <span className="text-slate-900 font-bold">⚡ CORE</span>
+            <button onClick={() => setMenuOpen(false)} className="text-slate-900">✕</button>
+          </div>
+          <button className="w-full bg-cyan-400 text-slate-900 py-4 rounded-xl font-bold mb-4">CODE INJECTION (+1500)</button>
+          <div className="flex gap-2 text-slate-900 text-sm"><button>RU</button>|<button>EN</button></div>
+        </div>
       )}
-
-      <style>{`
-        @keyframes breatheBg {
-          0%, 100% {
-            transform: scale(1.02);
-            opacity: 0.22;
-          }
-          50% {
-            transform: scale(1.05);
-            opacity: 0.29;
-          }
-        }
-        @keyframes breatheBtn {
-          0%, 100% {
-            transform: scale(1);
-          }
-          50% {
-            transform: scale(1.02);
-          }
-        }
-      `}</style>
-
     </div>
   );
 }
