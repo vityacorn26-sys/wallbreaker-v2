@@ -6,7 +6,7 @@ import * as path from 'path';
 import cors from 'cors';
 import crypto from 'crypto';
 import db, { initDb } from './server/db.js';
-import { getRewardForRank } from './server/services/ranks.js';
+import { getRewardForRank, getRankName } from './server/services/ranks.js';
 import { recalcDrawScore, getActiveDrawId } from './server/services/draw.js';
 import {
   generateUniqueAutoNickname,
@@ -20,7 +20,6 @@ initDb();
 
 const app = express();
 const PORT = 3001;
-
 const NICKNAME_RENAME_PRICE_WBC = 250000;
 const NICKNAME_RENAME_PRICE_STARS = 50;
 
@@ -29,7 +28,6 @@ app.use(cors({
   origin: '*',
   credentials: false
 }));
-
 app.use(express.json());
 
 // Железная валидация Telegram initData через BOT_TOKEN
@@ -40,7 +38,6 @@ function parseTgInitData(initDataStr: string) {
     const hash = params.get('hash');
     const userRaw = params.get('user');
     const startParam = params.get('start_param') || null;
-
     if (!hash || !userRaw) return null;
 
     const token = process.env.BOT_TOKEN;
@@ -98,7 +95,7 @@ app.post('/api/user', (req: any, res: any) => {
     if (!tgUser) {
       return res.status(400).json({ error: "Invalid or missing initData" });
     }
-    
+
     const telegramId = tgUser.id;
     const username = tgUser.username;
     const referrerId = tgUser.referrerId;
@@ -134,7 +131,17 @@ app.post('/api/user', (req: any, res: any) => {
       .run(user.energy, user.lastEnergyUpdate, telegramId);
 
     const liveScore = recalcDrawScore(telegramId);
-    res.json({ ...user, live_score: liveScore, current_round: drawId });
+    
+    // Передаем на фронтенд данные, подтягивая правильное имя ранга из бэкенда
+    const userRankId = user.rank_id || 1;
+    res.json({ 
+      ...user, 
+      rank_id: userRankId,
+      rank_name: getRankName(userRankId),
+      live_score: liveScore, 
+      current_round: drawId 
+    });
+
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'server error' });
@@ -149,6 +156,7 @@ app.post('/api/tap', (req: any, res: any) => {
     if (!tgUser) {
       return res.status(400).json({ error: "Invalid initData" });
     }
+
     const telegramId = tgUser.id;
     const tapCount = Math.min(count || 1, 100);
 
@@ -162,6 +170,7 @@ app.post('/api/tap', (req: any, res: any) => {
     const drawId = getActiveDrawId();
     const newEnergy = user.energy - tapCount;
     const newTapsTotal = (user.taps_total || 0) + tapCount;
+
     const coinsPerTap = GAME_CONFIG.RANK_REWARDS[user.rank_id as keyof typeof GAME_CONFIG.RANK_REWARDS] || 10;
     const wbcEarned = tapCount * coinsPerTap;
     const newWbcBalance = (user.wbc_balance || 0) + wbcEarned;
@@ -173,12 +182,12 @@ app.post('/api/tap', (req: any, res: any) => {
       .run(tapCount, now, drawId, telegramId);
 
     const liveScore = recalcDrawScore(telegramId);
-
-    res.json({ 
-      ...user, 
-      energy: newEnergy, 
-      taps_total: newTapsTotal, 
-      live_score: liveScore 
+    res.json({
+      ...user,
+      energy: newEnergy,
+      taps_total: newTapsTotal,
+      wbc_balance: newWbcBalance,
+      live_score: liveScore
     });
   } catch (e) {
     console.error(e);
@@ -194,6 +203,7 @@ app.post('/api/user/nickname', (req: any, res: any) => {
     if (!tgUser) {
       return res.status(400).json({ success: false, error: 'invalid_auth' });
     }
+
     const telegramId = tgUser.id;
     const normalized = normalizeNickname(requested);
 
@@ -221,6 +231,7 @@ app.post('/api/user/nickname', (req: any, res: any) => {
         SET public_nickname = ?, nickname_manual = 1, nickname_free_used = 1, nickname_updatedAt = ?, updatedAt = ?
         WHERE telegramId = ?
       `).run(normalized, now, now, telegramId);
+
       return res.json({
         success: true,
         public_nickname: normalized,
@@ -242,12 +253,14 @@ app.post('/api/user/nickname', (req: any, res: any) => {
       if (currentBalance < NICKNAME_RENAME_PRICE_WBC) {
         return res.status(400).json({ success: false, error: 'nickname_no_wbc' });
       }
+
       const nextBalance = currentBalance - NICKNAME_RENAME_PRICE_WBC;
       db.prepare(`
         UPDATE users
         SET public_nickname = ?, nickname_manual = 1, nickname_updatedAt = ?, wbc_balance = ?, updatedAt = ?
         WHERE telegramId = ?
       `).run(normalized, now, nextBalance, now, telegramId);
+
       return res.json({
         success: true,
         public_nickname: normalized,

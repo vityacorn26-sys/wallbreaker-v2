@@ -7,6 +7,16 @@ export const GAME_CONFIG = {
     ADS_HOUR_LIMIT: 20,
     ADS_DAY_LIMIT: 60,
     AD_REWARD_COOLDOWN_MS: 25 * 1000,
+    
+    // Текстовые имена рангов — теперь строго на бэкенде!
+    RANK_NAMES: {
+        1: "Proxy Hacker",
+        2: "Tunnel Master",
+        3: "Firewall Breaker",
+        4: "Root Operator",
+        5: "Cyber Legend"
+    },
+    
     RANK_REWARDS: {
         1: 10,
         2: 25,
@@ -21,7 +31,9 @@ export const GAME_CONFIG = {
         5: 1300000
     },
     RANK_PRICES_TON: {
-        3: 0.5
+        3: 0.5,
+        4: 1.0,
+        5: 2.5
     },
     RANK_PRICES_STARS: {
         3: 50

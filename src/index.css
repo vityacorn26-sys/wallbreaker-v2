@@ -1,36 +1,34 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme {
-  /* Заменяем системный белый на живой, блестящий хромированный металлик */
-  --color-metallic: #e2e8f0;
-  
-  /* Фирменные цвета проекта для Breach Board и интерфейса */
-  --color-cyber-cyan: #06b6d4;      /* Бирюзовый для активных/eligible */
-  --color-cyber-red: #7f1d1d;       /* Глубокий хакерский красный для не внёсших ключ */
-  --color-neon-pink: #f472b6;       /* Лёгкий розовый для подсветки тучки */
-  
-  /* Кастомная плавная анимация "дыхания" (пульсации) для кота, тучки и сервера */
-  --animate-pulse-live: pulse-live 3.5s ease-in-out infinite;
+@layer base {
+  html, body {
+    @apply w-full h-full overflow-hidden bg-slate-950 text-white antialiased;
+    /* Убиваем скролл и pull-to-refresh в Telegram */
+    overscroll-behavior-y: none;
+    touch-action: pan-x pan-y;
+    -webkit-tap-highlight-color: transparent;
+  }
 
-  @keyframes pulse-live {
-    0%, 100% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.03);
-    }
+  #root {
+    @apply w-full h-full flex flex-col overflow-hidden;
+  }
+
+  /* Скрываем скроллбары, если где-то понадобится внутренний скролл */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+  * {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
 
-/* Базовые стили экрана игры под Fullscreen */
-html, body, #root {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  background: #020617; /* Глубокий хакерский темный фон вместо серого */
-  color: var(--color-metallic);
-  font-family: 'Courier New', Courier, monospace;
-  overflow: hidden; /* Запрещаем случайные прокрутки в Fullscreen */
-  user-select: none; /* Чтобы при частых тапах по коту не выделялся текст */
+@keyframes float-up {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-60px) scale(1.2); opacity: 0; }
+}
+.animate-float-up {
+  animation: float-up 1.5s ease-out forwards;
 }

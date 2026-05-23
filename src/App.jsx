@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './index.css';
-
 import cat1 from './assets/cat1.jpg';
 import cat2 from './assets/cat2.jpg';
 import cat3 from './assets/cat3.jpg';
@@ -16,11 +15,17 @@ const RANK_IMAGES = { 1: cat1, 2: cat2, 3: cat3, 4: cat4, 5: cat5 };
 const RANK_REWARDS = { 1: 10, 2: 25, 3: 60, 4: 150, 5: 400 };
 
 export default function App() {
-  const [user, setUser] = useState({ wbc_balance: 0, energy: 0, rank_id: 1, rank_name: "Proxy Hacker" });
+  const [user, setUser] = useState({ energy: 100, rank_id: 1, rank_name: "Proxy Hacker", rank_expires_at: null });
+  const [wbcBalance, setWbcBalance] = useState(0);
+  const [liveScore, setLiveScore] = useState(0);
+  
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isTapping, setIsTapping] = useState(false);
-
+  
+  const [floatingTexts, setFloatingTexts] = useState([]);
+  const [timeLeft, setTimeLeft] = useState('');
+  
   const clicksBufferRef = useRef(0);
   const debounceTimeoutRef = useRef(null);
 
@@ -29,7 +34,8 @@ export default function App() {
       const tg = window.Telegram.WebApp;
       tg.ready();
       tg.expand();
-      
+      tg.disableVerticalSwipes();
+
       fetch(`${API}/api/user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -37,7 +43,16 @@ export default function App() {
       })
         .then(res => res.json())
         .then(data => {
-          if (!data.error) setUser(data);
+          if (!data.error) {
+            setUser({ 
+              energy: data.energy ?? 100, 
+              rank_id: data.rank_id || 1, 
+              rank_name: data.rank_name || "Proxy Hacker",
+              rank_expires_at: data.rank_expires_at
+            });
+            setWbcBalance(data.wbc_balance || 0);
+            setLiveScore(data.draw_score_cached || 0);
+          }
           setLoading(false);
         })
         .catch(() => setLoading(false));
@@ -45,6 +60,28 @@ export default function App() {
       setLoading(false);
     }
   }, []);
+
+  // Таймер ранга (7 дней)
+  useEffect(() => {
+    if (!user.rank_expires_at) {
+      setTimeLeft('PERMANENT');
+      return;
+    }
+    const interval = setInterval(() => {
+      const diff = new Date(user.rank_expires_at).getTime() - Date.now();
+      if (diff <= 0) {
+        setTimeLeft('EXPIRED');
+        clearInterval(interval);
+      } else {
+        const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        const m = Math.floor((diff / 1000 / 60) % 60);
+        const s = Math.floor((diff / 1000) % 60);
+        setTimeLeft(`${d}d ${h}h ${m}m ${s}s`);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [user.rank_expires_at]);
 
   const sendPackToServer = () => {
     const totalTaps = clicksBufferRef.current;
@@ -57,142 +94,143 @@ export default function App() {
       body: JSON.stringify({ initData: window.Telegram?.WebApp?.initData, count: totalTaps })
     })
       .then(res => res.json())
-      .then(data => { if (!data.error) setUser(data); });
+      .then(data => { 
+        if (!data.error) {
+          setUser(prev => ({ ...prev, energy: data.energy }));
+          setWbcBalance(data.wbc_balance);
+          setLiveScore(data.draw_score_cached);
+        } 
+      });
   };
 
-  const handleTap = () => {
+  const handleTap = (e) => {
     if (user.energy <= 0) return;
-
     setIsTapping(true);
     setTimeout(() => setIsTapping(false), 80);
-
-    setUser(prev => ({
-      ...prev,
-      wbc_balance: prev.wbc_balance + (RANK_REWARDS[prev.rank_id] || 10),
-      energy: Math.max(0, prev.energy - 1)
-    }));
+    
+    const reward = RANK_REWARDS[user.rank_id] || 10;
+    setWbcBalance(prev => prev + reward);
+    setUser(prev => ({ ...prev, energy: Math.max(0, prev.energy - 1) }));
+    
+    // Анимация тапа (Бирюзовый цвет)
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const newId = Date.now() + Math.random();
+    
+    setFloatingTexts(prev => [...prev, { id: newId, x, y, val: `+${reward}` }]);
+    setTimeout(() => {
+      setFloatingTexts(prev => prev.filter(t => t.id !== newId));
+    }, 1500); // 1.5 секунды для тапа
 
     clicksBufferRef.current += 1;
     if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
     debounceTimeoutRef.current = setTimeout(sendPackToServer, 850);
   };
 
-  const handleProxyClick = () => {
-    if (window.Telegram?.WebApp) {
-      window.Telegram.WebApp.openTelegramLink(PROXY_BOT_URL);
-      setTimeout(() => window.Telegram.WebApp.close(), 100);
-    } else {
-      window.open(PROXY_BOT_URL, '_blank');
-    }
-  };
-
-  // ЭКРАН ЗАГРУЗКИ
-  if (loading) {
-    return (
-      <div className="fixed inset-0 bg-slate-950 flex flex-col items-center justify-center text-white z-50">
-        <div className="w-full h-full absolute inset-0">
-          <img src={loadingImg} alt="Booting OS..." className="w-full h-full object-cover" />
-        </div>
-        <div className="relative z-10 bg-slate-950/80 backdrop-blur-md px-6 py-4 rounded-2xl border border-cyan-500/30 flex flex-col items-center gap-1 mt-auto mb-16">
-          <p className="text-cyan-400 font-mono text-xs tracking-[0.3em] uppercase animate-pulse">BOOTING SYSTEM OS...</p>
-          <span className="text-[9px] text-slate-500 font-mono">WALLBREAKER PROTOCOL V2</span>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <div className="fixed inset-0 bg-slate-950 z-50"></div>;
 
   return (
     <div className="relative min-h-screen bg-slate-950 text-white font-mono select-none overflow-hidden flex flex-col">
-      
-      {/* ЧИСТЫЙ ФОН */}
       <div className="absolute inset-0 pointer-events-none">
-        <img src={RANK_IMAGES[user.rank_id] || cat1} className="w-full h-full object-cover" alt="Background Node" />
+        <img src={RANK_IMAGES[user.rank_id] || cat1} className="w-full h-full object-cover opacity-40" alt="Bg" />
       </div>
 
-      {/* ВЕРХНИЙ БЛОК (ХЕДЕР) */}
-      <div className="relative z-10 w-full flex justify-between items-start px-4 pt-8">
-        {/* Кнопка меню */}
-        <button 
-          onClick={() => setMenuOpen(true)}
-          className="w-11 h-11 rounded-xl bg-slate-900/80 border border-cyan-500/30 flex flex-col justify-center items-center gap-1.5 active:scale-95 transition-transform backdrop-blur-sm shadow-[0_0_10px_rgba(34,211,238,0.2)]"
-        >
-          <div className="w-5 h-0.5 bg-cyan-400"></div>
-          <div className="w-5 h-0.5 bg-cyan-400"></div>
-          <div className="w-5 h-0.5 bg-cyan-400"></div>
+      {/* ХЕДЕР */}
+      <div className="relative z-10 w-full flex justify-between items-start px-4 pt-12">
+        <button onClick={() => setMenuOpen(true)} className="w-12 h-12 rounded-xl bg-slate-900/90 border border-cyan-500/50 flex flex-col justify-center items-center gap-1.5 active:scale-95 transition-transform backdrop-blur-md">
+          <div className="w-6 h-0.5 bg-cyan-400"></div>
+          <div className="w-6 h-0.5 bg-cyan-400"></div>
+          <div className="w-6 h-0.5 bg-cyan-400"></div>
         </button>
 
-        {/* Киберпанк Карточка Ранга по центру */}
-        <div className="bg-slate-950/70 border-t-2 border-cyan-400 px-6 py-2 rounded-b-xl backdrop-blur-md shadow-[0_5px_20px_rgba(34,211,238,0.15)] flex flex-col items-center">
-          <h2 className="text-sm font-black tracking-widest text-cyan-400 uppercase drop-shadow-md">
-            {user.rank_name}
-          </h2>
+        {/* Плашка Ранга + Таймер */}
+        <div className="flex flex-col items-center transform -translate-y-1">
+          <div className="bg-slate-900/90 border border-cyan-500/50 px-6 py-2 rounded-xl backdrop-blur-md shadow-[0_0_15px_rgba(34,211,238,0.3)]">
+            <h2 className="text-sm md:text-base font-black tracking-[0.15em] text-cyan-400 uppercase drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]">
+              {user.rank_name}
+            </h2>
+          </div>
+          <div className="mt-1.5 bg-slate-950/80 px-3 py-0.5 rounded-full border border-slate-700/50">
+            <span className="text-[9px] text-slate-300 tracking-widest font-bold">{timeLeft}</span>
+          </div>
         </div>
 
-        {/* Плашка активной ноды справа */}
-        <div className="bg-cyan-950/80 border border-cyan-500/50 px-2 py-1.5 rounded-lg text-[9px] text-cyan-300 font-black tracking-widest uppercase shadow-[0_0_15px_rgba(6,182,212,0.3)] backdrop-blur-sm">
-          R{user.rank_id} NODE ACTIVE
+        <div className="bg-cyan-950/90 border border-cyan-500/50 px-2.5 py-2 rounded-lg text-[10px] text-cyan-300 font-black tracking-widest uppercase">
+          R{user.rank_id}
         </div>
       </div>
 
-      {/* ЦЕНТРАЛЬНЫЙ БЛОК */}
-      <div className="relative z-10 flex flex-col items-center justify-start flex-grow pt-6">
-        
-        {/* Баланс */}
-        <div className="text-center mb-10">
-          <h1 className="text-5xl font-black tracking-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-            {user.wbc_balance.toLocaleString()} <span className="text-cyan-400 text-3xl font-black">$WBC</span>
+      {/* ТУЧКА LIVE SCORE */}
+      <div className="absolute top-28 right-4 z-20">
+        <div className="p-[2px] rounded-full bg-gradient-to-r from-slate-300 via-slate-100 to-pink-300 shadow-[0_0_20px_rgba(244,114,182,0.3)]">
+          <div className="bg-slate-950/90 backdrop-blur-md rounded-full px-4 py-1.5 flex flex-col items-center justify-center min-w-[90px]">
+            <span className="text-pink-300 font-black text-base drop-shadow-[0_0_8px_rgba(244,114,182,0.8)]">
+              {Number(liveScore).toFixed(3)}
+            </span>
+            <span className="text-[7px] text-slate-400 font-bold tracking-widest uppercase mt-0.5">Live Score</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ЦЕНТР */}
+      <div className="relative z-10 flex flex-col items-center justify-start flex-grow pt-16">
+        <div className="text-center mb-6">
+          <h1 className="text-4xl font-black tracking-tight drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)]">
+            {wbcBalance.toLocaleString()} <span className="text-cyan-400 text-2xl font-black">$WBC</span>
           </h1>
         </div>
 
-        {/* Кнопка тапа (Круглая, опущена вниз) */}
-        <button 
+        {/* Кнопка тапа с анимацией */}
+        <button
           onClick={handleTap}
           style={{ transform: isTapping ? 'scale(0.96)' : 'scale(1)' }}
-          className="relative w-[280px] h-[280px] rounded-full overflow-hidden border-4 border-cyan-400 shadow-[0_0_40px_rgba(34,211,238,0.4)] transition-transform duration-75 outline-none mt-12"
+          className="relative w-[260px] h-[260px] rounded-3xl overflow-hidden border-2 border-cyan-400/50 shadow-[0_0_40px_rgba(34,211,238,0.3)] transition-transform duration-75 outline-none"
         >
-          <div className="absolute inset-0 bg-cyan-500/10 animate-[pulse_2s_infinite] pointer-events-none"></div>
           <img src={RANK_IMAGES[user.rank_id] || cat1} className="w-full h-full object-cover" alt="Core Tap" />
+          
+          {floatingTexts.map(t => (
+            <div 
+              key={t.id} 
+              className="absolute text-cyan-400 font-black text-2xl pointer-events-none animate-float-up drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]"
+              style={{ left: t.x, top: t.y }}
+            >
+              {t.val}
+            </div>
+          ))}
         </button>
 
-        {/* Шкала CPU под кнопкой */}
-        <div className="w-full max-w-[280px] flex flex-col gap-1.5 mt-6 bg-slate-950/60 p-2 rounded-xl backdrop-blur-sm border border-slate-800/50">
-          <div className="flex justify-between text-[10px] tracking-wider text-slate-300 px-1 font-bold">
-            <span>CORE CPU LOAD</span>
-            <span className="text-cyan-400">{user.energy}%</span>
+        {/* Шкала CPU */}
+        <div className="w-full max-w-[260px] flex flex-col gap-1.5 mt-8 bg-slate-950/80 p-2.5 rounded-xl backdrop-blur-md border border-slate-800/80 shadow-lg">
+          <div className="flex justify-between text-[11px] tracking-wider text-slate-300 px-1 font-bold">
+            <span>CPU</span>
+            <span className="text-cyan-400 drop-shadow-[0_0_5px_rgba(34,211,238,0.8)]">{user.energy} / 100</span>
           </div>
-          <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-cyan-400 transition-all duration-300 shadow-[0_0_10px_rgba(34,211,238,0.8)]"
-              style={{ width: `${user.energy}%` }}
+          <div className="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+            <div
+              className="h-full bg-cyan-400 transition-all duration-300 shadow-[0_0_12px_rgba(34,211,238,1)]"
+              style={{ width: `${(user.energy / 100) * 100}%` }}
             ></div>
           </div>
         </div>
       </div>
 
-      {/* ИКОНКА ПРОКСИ БОТА (Слева внизу, над таб-баром) */}
-      <div className="fixed bottom-28 left-4 z-20">
-        <button 
-          onClick={handleProxyClick}
-          className="w-14 h-14 rounded-2xl overflow-hidden border-2 border-cyan-400 active:scale-90 transition-transform shadow-[0_0_20px_rgba(34,211,238,0.3)]"
-        >
-          <img src={serverImg} alt="Proxy Bot" className="w-full h-full object-cover" />
+      {/* ТАБ-БАР (5 кнопок) */}
+      <div className="fixed bottom-10 left-4 right-4 z-20 bg-gradient-to-b from-slate-200 to-slate-400 border border-slate-400 shadow-[0_10px_40px_rgba(0,0,0,0.5)] p-2 rounded-2xl flex justify-between px-2 items-center min-h-[70px]">
+        <button className="flex-1 flex flex-col items-center justify-center py-3 rounded-xl bg-slate-300/60 shadow-inner">
+          <span className="text-[10px] font-black text-cyan-700 tracking-wide uppercase drop-shadow-sm">Главная</span>
         </button>
-      </div>
-
-      {/* ТАБ-БАР (Поднят выше, цвет металлик, текст бирюзовый) */}
-      <div className="fixed bottom-8 left-4 right-4 z-20 bg-gradient-to-b from-slate-200 to-slate-400 border border-slate-400 shadow-2xl p-2 rounded-2xl flex justify-between px-2">
-        <button className="flex-1 flex flex-col items-center justify-center py-2 rounded-xl bg-slate-300/50 shadow-inner">
-          <span className="text-[11px] font-black text-cyan-700 tracking-wide uppercase drop-shadow-sm">Главная</span>
+        <button className="flex-1 flex flex-col items-center justify-center py-3 rounded-xl active:bg-slate-300/30 transition-colors">
+          <span className="text-[10px] font-black text-cyan-800 tracking-wide uppercase opacity-70">Tasks</span>
         </button>
-        <button className="flex-1 flex flex-col items-center justify-center py-2 rounded-xl">
-          <span className="text-[11px] font-black text-cyan-800 tracking-wide uppercase opacity-70">Tasks</span>
+        <button className="flex-1 flex flex-col items-center justify-center py-3 rounded-xl active:bg-slate-300/30 transition-colors">
+          <span className="text-[10px] font-black text-cyan-800 tracking-wide uppercase opacity-70">DarkNet Market</span>
         </button>
-        <button className="flex-1 flex flex-col items-center justify-center py-2 rounded-xl text-center leading-tight">
-          <span className="text-[10px] font-black text-cyan-800 tracking-wide uppercase block opacity-70">Darknet</span>
-          <span className="text-[9px] font-black text-cyan-800 block opacity-50">Market</span>
+        <button className="flex-1 flex flex-col items-center justify-center py-3 rounded-xl active:bg-slate-300/30 transition-colors">
+          <span className="text-[10px] font-black text-cyan-800 tracking-wide uppercase opacity-70">Контракт</span>
         </button>
-        <button className="flex-1 flex flex-col items-center justify-center py-2 rounded-xl">
-          <span className="text-[11px] font-black text-cyan-800 tracking-wide uppercase opacity-70">Аккаунт</span>
+        <button className="flex-1 flex flex-col items-center justify-center py-3 rounded-xl active:bg-slate-300/30 transition-colors">
+          <span className="text-[10px] font-black text-cyan-800 tracking-wide uppercase opacity-70">Аккаунт</span>
         </button>
       </div>
 
@@ -203,32 +241,18 @@ export default function App() {
             <h2 className="text-slate-800 font-black tracking-widest text-sm uppercase">⚡ Protocol Core</h2>
             <button onClick={() => setMenuOpen(false)} className="text-slate-600 hover:text-slate-900 transition-colors text-2xl font-bold">✕</button>
           </div>
-
-          <div className="flex gap-4 border-b border-slate-400/50 pb-4">
-            <button className="text-sm font-black text-slate-800 border-b-2 border-slate-800">RU</button>
-            <span className="text-slate-400">|</span>
-            <button className="text-sm font-bold text-slate-500">EN</button>
-          </div>
-
           <nav className="flex flex-col gap-3">
             <button className="w-full text-left p-4 rounded-xl bg-cyan-400 border border-cyan-500 shadow-md active:scale-[0.98] transition-transform">
               <div className="text-sm font-black text-slate-900 uppercase">Code Injection</div>
               <div className="text-[11px] text-slate-800 font-bold mt-1">+1,500 WBC & Full CPU</div>
             </button>
-
             <button className="w-full text-left p-4 rounded-xl bg-slate-300 border border-slate-400 shadow-sm hover:bg-slate-200 active:scale-[0.98] transition-all">
               <div className="text-sm font-black text-slate-800 uppercase">Referral Node</div>
               <div className="text-[11px] text-slate-600 font-bold mt-1">Grid network mapping</div>
             </button>
-
             <button className="w-full text-left p-4 rounded-xl bg-slate-300 border border-slate-400 shadow-sm hover:bg-slate-200 active:scale-[0.98] transition-all">
               <div className="text-sm font-black text-slate-800 uppercase">Breach Board</div>
               <div className="text-[11px] text-slate-600 font-bold mt-1">Global cyber leaderboard</div>
-            </button>
-
-            <button className="w-full text-left p-4 rounded-xl bg-slate-300 border border-slate-400 shadow-sm hover:bg-slate-200 active:scale-[0.98] transition-all">
-              <div className="text-sm font-black text-slate-800 uppercase">Promocode</div>
-              <div className="text-[11px] text-slate-600 font-bold mt-1">Decrypt operational vouchers</div>
             </button>
           </nav>
         </div>
@@ -237,7 +261,6 @@ export default function App() {
       {menuOpen && (
         <div onClick={() => setMenuOpen(false)} className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 transition-opacity"></div>
       )}
-
     </div>
   );
 }
