@@ -1,11 +1,8 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 @layer base {
   html, body {
     @apply w-full h-full overflow-hidden bg-slate-950 text-white antialiased;
-    /* Убиваем скролл и pull-to-refresh в Telegram */
     overscroll-behavior-y: none;
     touch-action: pan-x pan-y;
     -webkit-tap-highlight-color: transparent;
@@ -15,7 +12,6 @@
     @apply w-full h-full flex flex-col overflow-hidden;
   }
 
-  /* Скрываем скроллбары, если где-то понадобится внутренний скролл */
   ::-webkit-scrollbar {
     display: none;
   }
